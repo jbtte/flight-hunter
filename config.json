@@ -3,7 +3,7 @@
     "check_interval_hours": 6,
     "default_duration_days": 12,
     "days_ahead": 150,
-    "pearl_threshold": 0.20
+    "pearl_threshold": 0.2
   },
   "monitored_routes": [
     {
@@ -15,6 +15,11 @@
     }
   ],
   "social_keywords": [
+    "brazil",
+    "brasil",
+    "gru",
+    "bsb",
+    "sao paulo",
     "japão",
     "tóquio",
     "tokyo",
@@ -23,9 +28,5 @@
     "erro",
     "urgente"
   ],
-  "priority_keywords": [
-    "erro",
-    "urgente",
-    "histórico"
-  ]
+  "priority_keywords": ["erro", "urgente", "histórico"]
 }

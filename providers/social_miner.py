@@ -9,7 +9,7 @@ load_dotenv()
 # Credenciais continuam vindo do .env por segurança
 API_ID = int(os.getenv("TELEGRAM_API_ID"))
 API_HASH = os.getenv("TELEGRAM_API_HASH")
-CHANNELS = ["@passagensimperdiveis", "@melhoresdestinos"]
+CHANNELS = ["passagensimperdiveis", "melhoresdestinos", "secretflying", "flyous"]
 
 client = TelegramClient("session_hunter", API_ID, API_HASH)
 
