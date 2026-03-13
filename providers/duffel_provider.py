@@ -11,22 +11,21 @@ def buscar_passagem_dinamica(origem, destino, data_ida, data_volta):
     try:
         offer_request = (
             client.offer_requests.create()
-            .get_offers(
-                slices=[
-                    {
-                        "origin": origem,
-                        "destination": destino,
-                        "departure_date": data_ida,
-                    },
-                    {
-                        "origin": destino,
-                        "destination": origem,
-                        "departure_date": data_volta,
-                    },
-                ],
-                passengers=[{"type": "adult"}],
-                cabin_class="economy",
-            )
+            .slices([
+                {
+                    "origin": origem,
+                    "destination": destino,
+                    "departure_date": data_ida,
+                },
+                {
+                    "origin": destino,
+                    "destination": origem,
+                    "departure_date": data_volta,
+                },
+            ])
+            .passengers([{"type": "adult"}])
+            .cabin_class("economy")
+            .return_offers()
             .execute()
         )
 
