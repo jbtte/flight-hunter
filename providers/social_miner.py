@@ -7,7 +7,7 @@ from utils.notifier import send_telegram_msg
 load_dotenv()
 
 # Credenciais continuam vindo do .env por segurança
-API_ID = os.getenv("TELEGRAM_API_ID")
+API_ID = int(os.getenv("TELEGRAM_API_ID"))
 API_HASH = os.getenv("TELEGRAM_API_HASH")
 CHANNELS = ["@passagensimperdiveis", "@melhoresdestinos"]
 
