@@ -1,6 +1,6 @@
 # --- API Providers ---
 # Cliente oficial da Duffel (NDC)
-duffel-api==0.3.0
+duffel-api==0.6.2
 # Travelpayouts usa aiohttp diretamente (sem wrapper)
 
 # Requisições HTTP assíncronas para o Notificador
