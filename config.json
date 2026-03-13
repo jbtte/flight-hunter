@@ -1,0 +1,31 @@
+{
+  "search_settings": {
+    "check_interval_hours": 6,
+    "default_duration_days": 12,
+    "days_ahead": 150,
+    "pearl_threshold": 0.20
+  },
+  "monitored_routes": [
+    {
+      "origin": "GRU",
+      "destination": "TYO",
+      "label": "Japão (Tóquio)",
+      "max_price_threshold": 6500.0,
+      "priority": "high"
+    }
+  ],
+  "social_keywords": [
+    "japão",
+    "tóquio",
+    "tokyo",
+    "osaka",
+    "narita",
+    "erro",
+    "urgente"
+  ],
+  "priority_keywords": [
+    "erro",
+    "urgente",
+    "histórico"
+  ]
+}

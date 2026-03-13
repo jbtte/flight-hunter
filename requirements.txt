@@ -1,0 +1,17 @@
+# --- API Providers ---
+# Cliente oficial da Duffel (NDC)
+duffel-api==0.3.0
+# Travelpayouts usa aiohttp diretamente (sem wrapper)
+
+# Requisições HTTP assíncronas para o Notificador
+aiohttp==3.9.5
+
+# --- Social & Telegram ---
+# API de usuário para o Social Miner (Monitorar canais)
+telethon==1.34.0
+
+# --- Utilities ---
+# Gerenciamento de variáveis de ambiente (.env)
+python-dotenv==1.0.1
+# Banco de dados (SQLite é nativo do Python, não precisa estar aqui, 
+# mas se usar SQLAlchemy no futuro, você adicionaria abaixo)

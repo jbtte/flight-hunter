@@ -1,0 +1,21 @@
+# Credenciais — NUNCA commitar
+.env
+
+# Sessão do Telethon (contém token de autenticação)
+*.session
+*.session-journal
+
+# Banco de dados local
+data/flights.db
+
+# Ambiente virtual
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
