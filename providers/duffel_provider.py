@@ -7,7 +7,7 @@ def buscar_passagem_dinamica(origem, destino, data_ida, data_volta):
     Busca na Duffel usando os parâmetros passados pelo orquestrador.
     Client instanciado por chamada para garantir thread-safety no executor.
     """
-    client = Duffel(access_token=os.getenv("DUFFEL_TOKEN"))
+    client = Duffel(access_token=os.getenv("DUFFEL_TOKEN"), api_version="v2")
     try:
         offer_request = (
             client.offer_requests.create()
