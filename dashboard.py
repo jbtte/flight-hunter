@@ -8,6 +8,30 @@ DB_PATH = "data/flights.db"
 st.set_page_config(page_title="Flight Hunter Pro", page_icon="✈️", layout="wide")
 
 
+def init_tables():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS scans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider TEXT, route TEXT, price_found REAL, baseline REAL,
+            was_pearl INTEGER DEFAULT 0, was_notified INTEGER DEFAULT 0,
+            timestamp DATETIME
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS social_hits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel TEXT, message TEXT, is_priority INTEGER DEFAULT 0,
+            was_notified INTEGER DEFAULT 0, timestamp DATETIME
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_tables()
+
+
 def query(sql, params=()):
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query(sql, conn, params=params)
