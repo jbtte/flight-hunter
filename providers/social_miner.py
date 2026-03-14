@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from utils.config_loader import CONFIG
 from utils.notifier import send_telegram_msg
+from utils.database import log_social_hit
 
 load_dotenv()
 
@@ -35,6 +36,7 @@ async def handler(event):
             f"Fonte: {event.chat.title}\n"
             f"Mensagem: {msg_original[:200]}..."
         )
+        log_social_hit(event.chat.title, msg_original[:500], is_priority, was_notified=True)
 
 
 async def start_social_monitor():

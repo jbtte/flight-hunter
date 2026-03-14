@@ -4,7 +4,7 @@ from utils.config_loader import CONFIG
 from providers.duffel_provider import buscar_passagem_dinamica
 from providers.travelpayouts_provider import get_baseline_price
 from providers.social_miner import start_social_monitor
-from utils.database import init_db, is_new_pearl
+from utils.database import init_db, is_new_pearl, log_scan
 from utils.notifier import send_telegram_msg
 from datetime import datetime, timedelta
 
@@ -51,13 +51,24 @@ async def rotina_busca_ativa():
                 res_duffel = await loop.run_in_executor(
                     None, buscar_passagem_dinamica, origem, destino, ida, volta
                 )
-                if res_duffel and _is_pearl(res_duffel["preco"], baseline, threshold, max_price):
-                    if await loop.run_in_executor(None, is_new_pearl, "duffel", label, res_duffel["preco"]):
-                        await send_telegram_msg(
-                            f"💎 **Duffel [{label}]:** R$ {res_duffel['preco']:.2f}\n"
-                            f"_(baseline: R$ {baseline:.2f})_" if baseline else
-                            f"💎 **Duffel [{label}]:** R$ {res_duffel['preco']:.2f}"
-                        )
+                if res_duffel:
+                    is_pearl = _is_pearl(res_duffel["preco"], baseline, threshold, max_price)
+                    notified = False
+                    if is_pearl:
+                        if await loop.run_in_executor(None, is_new_pearl, "duffel", label, res_duffel["preco"]):
+                            await send_telegram_msg(
+                                f"💎 **Duffel [{label}]:** R$ {res_duffel['preco']:.2f}\n"
+                                f"_(baseline: R$ {baseline:.2f})_" if baseline else
+                                f"💎 **Duffel [{label}]:** R$ {res_duffel['preco']:.2f}"
+                            )
+                            notified = True
+                    await loop.run_in_executor(
+                        None, log_scan, "duffel", label, res_duffel["preco"], baseline, is_pearl, notified
+                    )
+                else:
+                    await loop.run_in_executor(
+                        None, log_scan, "duffel", label, None, baseline, False, False
+                    )
 
 
         except Exception as e:
