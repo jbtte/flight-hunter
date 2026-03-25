@@ -105,13 +105,24 @@ async def rotina_busca_ativa():
                         None, confirmar_preco_scraper, origem, melhor_aeroporto, melhor_data_ida, data_volta
                     )
 
-                    # Sanidade: descarta confirmação se divergir mais de 40% do calendar
-                    if preco_confirmado and abs(preco_confirmado - melhor_preco) / melhor_preco < 0.40:
-                        preco_final = preco_confirmado
-                        fonte = "Google Flights"
+                    if preco_confirmado:
+                        variacao = (preco_confirmado - melhor_preco) / melhor_preco
+                        if variacao > 0.20:
+                            # Scraper encontrou preço >20% acima do cache → deal expirou
+                            logging.info(f"Deal expirado: cache R$ {melhor_preco:.2f} vs atual R$ {preco_confirmado:.2f} (+{variacao:.0%}). Ignorando.")
+                            continue
+                        elif abs(variacao) <= 0.20:
+                            # Scraper confirmou preço próximo → usa o valor real
+                            preco_final = preco_confirmado
+                            fonte = "Google Flights"
+                        else:
+                            # Scraper encontrou preço mais barato que o cache → ótimo
+                            preco_final = preco_confirmado
+                            fonte = "Google Flights (melhor que cache)"
                     else:
+                        # Scraper falhou → notifica com aviso de dado cacheado
                         preco_final = melhor_preco
-                        fonte = "Travelpayouts" + (" (scraper divergiu)" if preco_confirmado else " (não confirmado)")
+                        fonte = "Travelpayouts cache (não confirmado)"
 
                     if await loop.run_in_executor(None, is_new_pearl, "travelpayouts", label, preco_final):
                         data_volta = (date.fromisoformat(melhor_data_ida) + timedelta(days=dur_ref)).isoformat()
