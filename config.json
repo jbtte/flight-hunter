@@ -1,7 +1,7 @@
 {
   "search_settings": {
     "check_interval_hours": 12,
-    "pearl_threshold": 0.07,
+    "pearl_threshold": 0.04,
     "travel_window": {
       "start_date": "2026-10-01",
       "end_date": "2026-11-15",
@@ -15,7 +15,7 @@
       "destinations": ["NRT", "HND"],
       "city_code": "TYO",
       "label": "Japão (Tóquio)",
-      "max_price_threshold": 6500.0,
+      "max_price_threshold": 6000.0,
       "priority": "high"
     }
   ],
