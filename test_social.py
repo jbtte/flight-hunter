@@ -92,7 +92,7 @@ async def teste_notificador():
     from utils.notifier import send_telegram_msg
     try:
         await send_telegram_msg(
-            "🧪 *Teste do Flight Hunter Pro*\n\n"
+            "🧪 <b>Teste do Flight Hunter Pro</b>\n\n"
             "Social Mining conectado e funcionando.\n"
             "Canais monitorados: passagensimperdiveis, melhoresdestinos, secretflying, flyous"
         )
