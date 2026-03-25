@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from datetime import datetime
 
@@ -6,6 +7,7 @@ DB_PATH = "data/flights.db"
 
 def init_db():
     """Cria as tabelas se não existirem. Execute isso no início do main.py"""
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
