@@ -28,7 +28,7 @@ async def handler(event):
         is_priority = any(x in msg_lower for x in priority_keywords)
 
         prefixo = (
-            "🚨 **PÉROLA PRIORITÁRIA**" if is_priority else "🎯 **Interesse Detectado**"
+            "🚨 <b>PÉROLA PRIORITÁRIA</b>" if is_priority else "🎯 <b>Interesse Detectado</b>"
         )
 
         await send_telegram_msg(

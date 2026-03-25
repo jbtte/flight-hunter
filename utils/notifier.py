@@ -20,7 +20,7 @@ async def send_telegram_msg(message):
         return
 
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "Markdown"}
+    payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML", "disable_web_page_preview": True}
 
     try:
         async with aiohttp.ClientSession() as session:

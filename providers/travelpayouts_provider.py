@@ -45,17 +45,40 @@ async def get_baseline_price(origem, destino):
         return None
 
 
+def links_compra(origem, destino, data_ida, data_volta):
+    """Gera links de busca no Decolar e Google Flights para as datas informadas."""
+    decolar = (
+        f"https://www.decolar.com/passagens-aereas/resultado"
+        f"/{origem}/{destino}/{data_ida}/{data_volta}/1/0/0/NA/NA/NA"
+    )
+    google = (
+        f"https://www.google.com/travel/flights?hl=pt-BR&gl=BR&curr=BRL"
+        f"&q=voos+de+{origem}+para+{destino}+em+{data_ida}+volta+{data_volta}"
+    )
+    return decolar, google
+
+
+AIRLINES = {
+    "LA": "LATAM", "JJ": "LATAM", "NH": "ANA", "JL": "JAL",
+    "AA": "American Airlines", "UA": "United Airlines", "CX": "Cathay Pacific",
+    "KE": "Korean Air", "OZ": "Asiana", "TK": "Turkish Airlines",
+    "EK": "Emirates", "QR": "Qatar Airways", "SQ": "Singapore Airlines",
+    "MH": "Malaysia Airlines", "BR": "EVA Air", "CI": "China Airlines",
+    "CA": "Air China", "MU": "China Eastern",
+}
+
+
 async def get_calendar_prices(origem, destino, meses):
     """
     Busca preços para cada dia dos meses fornecidos via endpoint de calendário.
     meses: lista de strings 'YYYY-MM'
-    Retorna dict {date_iso: price} com todas as datas encontradas.
+    Retorna dict {date_iso: {price, airline, airline_code, departure_at, return_at}}
     """
     if not TRAVELPAYOUTS_TOKEN:
         return {}
 
     url = "https://api.travelpayouts.com/v1/prices/calendar"
-    precos = {}
+    resultado = {}
 
     async with aiohttp.ClientSession() as session:
         for mes in meses:
@@ -73,8 +96,15 @@ async def get_calendar_prices(origem, destino, meses):
                 if data.get("success"):
                     for date_str, info in data.get("data", {}).items():
                         if isinstance(info, dict) and "price" in info:
-                            precos[date_str] = info["price"]
+                            code = info.get("airline", "")
+                            resultado[date_str] = {
+                                "price": info["price"],
+                                "airline_code": code,
+                                "airline": AIRLINES.get(code, code),
+                                "departure_at": info.get("departure_at", ""),
+                                "return_at": info.get("return_at", ""),
+                            }
             except Exception as e:
                 print(f"Erro Travelpayouts calendar {mes} ({origem}-{destino}): {e}")
 
-    return precos
+    return resultado

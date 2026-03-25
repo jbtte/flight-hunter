@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from utils.config_loader import CONFIG
-from providers.travelpayouts_provider import get_baseline_price, get_calendar_prices
+from providers.travelpayouts_provider import get_baseline_price, get_calendar_prices, links_compra
 from providers.scraper_provider import confirmar_preco_scraper
 from providers.social_miner import start_social_monitor
 from utils.database import init_db, is_new_pearl, log_scan
@@ -69,13 +69,15 @@ async def rotina_busca_ativa():
                 melhor_aeroporto = None
 
                 # Varredura via calendar — 2 chamadas por aeroporto cobre todo o período
+                melhor_info = None
                 for destino in destinos:
-                    precos = await get_calendar_prices(origem, destino, meses)
-                    for date_str, preco in precos.items():
+                    calendar = await get_calendar_prices(origem, destino, meses)
+                    for date_str, info in calendar.items():
                         data_ida = date.fromisoformat(date_str)
                         if not (start <= data_ida <= end):
                             continue
-                        logging.info(f"  {origem}→{destino} {date_str}: R$ {preco:.2f}")
+                        preco = info["price"]
+                        logging.info(f"  {origem}→{destino} {date_str}: R$ {preco:.2f} ({info['airline']})")
                         await loop.run_in_executor(
                             None, log_scan, "travelpayouts", label, preco, baseline,
                             _is_pearl(preco, baseline, threshold, max_price), False
@@ -84,6 +86,7 @@ async def rotina_busca_ativa():
                             melhor_preco = preco
                             melhor_data_ida = date_str
                             melhor_aeroporto = destino
+                            melhor_info = info
 
                 # Confirmação via scraper apenas se calendar apontou pérola
                 if melhor_preco and _is_pearl(melhor_preco, baseline, threshold, max_price):
@@ -103,13 +106,21 @@ async def rotina_busca_ativa():
                         fonte = "Travelpayouts" + (" (scraper divergiu)" if preco_confirmado else " (não confirmado)")
 
                     if await loop.run_in_executor(None, is_new_pearl, "travelpayouts", label, preco_final):
+                        data_volta = (date.fromisoformat(melhor_data_ida) + timedelta(days=dur_ref)).isoformat()
+                        url_decolar, url_google = links_compra(origem, melhor_aeroporto, melhor_data_ida, data_volta)
+                        airline = melhor_info["airline"] if melhor_info else "—"
+                        dep = melhor_info.get("departure_at", "")[:16].replace("T", " ") if melhor_info else ""
+                        ret = melhor_info.get("return_at", "")[:16].replace("T", " ") if melhor_info else ""
+
                         msg = (
-                            f"💎 **[{label}]:** R$ {preco_final:.2f}\n"
-                            f"Aeroporto: {melhor_aeroporto} | Ida: {melhor_data_ida} | ~{dur_ref} dias\n"
-                            f"Fonte: {fonte}\n"
+                            f"💎 <b>[{label}]</b> R$ {preco_final:.2f}\n"
+                            f"✈️ {airline} | {melhor_aeroporto}\n"
+                            f"📅 Ida: {dep} | Volta: {ret}\n"
+                            f"📊 Fonte: {fonte}"
                         )
                         if baseline:
-                            msg += f"_(baseline: R$ {baseline:.2f})_"
+                            msg += f" <i>(baseline: R$ {baseline:.2f})</i>"
+                        msg += f"\n\n🛒 <a href='{url_decolar}'>Decolar</a>  🔍 <a href='{url_google}'>Google Flights</a>"
                         await send_telegram_msg(msg)
                         await loop.run_in_executor(
                             None, log_scan, "travelpayouts", label, preco_final, baseline, True, True
