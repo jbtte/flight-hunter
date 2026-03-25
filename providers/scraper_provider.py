@@ -6,6 +6,15 @@ from bs4 import BeautifulSoup
 SCRAPEDO_TOKEN = os.getenv("SCRAPEDO_TOKEN")
 
 
+def _get_usd_brl():
+    """Busca cotação USD/BRL atual. Retorna fallback 5.5 se falhar."""
+    try:
+        r = requests.get("https://api.frankfurter.app/latest?from=USD&to=BRL", timeout=5)
+        return r.json()["rates"]["BRL"]
+    except Exception:
+        return 5.5
+
+
 def confirmar_preco_scraper(origem, destino, data_ida, data_volta):
     """
     Confirma preço via scrape.do + Google Flights.
@@ -15,9 +24,10 @@ def confirmar_preco_scraper(origem, destino, data_ida, data_volta):
     if not SCRAPEDO_TOKEN:
         return None
 
+    # gl=BR + hl=pt-BR + curr=BRL forçam localização brasileira
     target_url = (
         f"https://www.google.com/travel/flights"
-        f"?hl=pt-BR&curr=BRL"
+        f"?hl=pt-BR&gl=BR&curr=BRL"
         f"&q=flights+from+{origem}+to+{destino}"
         f"+on+{data_ida}+return+{data_volta}"
     )
@@ -43,59 +53,76 @@ def confirmar_preco_scraper(origem, destino, data_ida, data_volta):
 
 def _extrair_menor_preco(html):
     """
-    Extrai preços em BRL do HTML renderizado do Google Flights.
-    Tenta múltiplas estratégias já que o Google Flights embute dados em JSON/JS.
+    Extrai preços do HTML renderizado do Google Flights.
+    Detecta se os preços estão em BRL ou USD e converte para BRL.
     """
-    precos = []
-    _range_valido = lambda v: 1000 < v < 50000
+    precos_brl = []
+    precos_usd = []
+    _range_brl = lambda v: 1000 < v < 50000
+    _range_usd = lambda v: 200 < v < 10000
 
-    # Estratégia 1: R$ X.XXX ou R$X.XXX (formato brasileiro explícito)
+    # Estratégia 1: R$ explícito → BRL
     for m in re.findall(r'R\$\s*([\d\.]+(?:,\d{2})?)', html):
         try:
             v = float(m.replace('.', '').replace(',', '.'))
-            if _range_valido(v):
-                precos.append(v)
+            if _range_brl(v):
+                precos_brl.append(v)
         except ValueError:
             pass
 
-    # Estratégia 2: JSON embutido — "BRL","6262" ou ["BRL",6262]
+    # Estratégia 2: JSON "BRL" + número → BRL
     for m in re.findall(r'["\[]BRL["\],]\s*["\']?(\d{4,5})["\']?', html):
         try:
             v = float(m)
-            if _range_valido(v):
-                precos.append(v)
+            if _range_brl(v):
+                precos_brl.append(v)
         except ValueError:
             pass
 
-    # Estratégia 3: padrão de preço em JSON — "price":6262 ou "totalPrice":6262
-    for m in re.findall(r'"(?:price|totalPrice|totalFare|amount)"\s*:\s*(\d{4,5})', html):
+    # Estratégia 3: $ sem R (dólar) → USD
+    for m in re.findall(r'(?<!R)\$\s*([\d,]+(?:\.\d{2})?)', html):
+        try:
+            v = float(m.replace(',', ''))
+            if _range_usd(v):
+                precos_usd.append(v)
+        except ValueError:
+            pass
+
+    # Estratégia 4: JSON "USD" + número → USD
+    for m in re.findall(r'["\[]USD["\],]\s*["\']?(\d{3,5})["\']?', html):
         try:
             v = float(m)
-            if _range_valido(v):
-                precos.append(v)
+            if _range_usd(v):
+                precos_usd.append(v)
         except ValueError:
             pass
 
-    # Estratégia 4: aria-label com valor monetário nos elementos da página
+    # Estratégia 5: aria-label com valores monetários
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup.find_all(attrs={"aria-label": True}):
         label = tag["aria-label"]
-        for m in re.findall(r'[\d]{1,2}[.,][\d]{3}', label):
+        for m in re.findall(r'R\$\s*([\d\.]+)', label):
             try:
-                v = float(m.replace('.', '').replace(',', ''))
-                if _range_valido(v):
-                    precos.append(v)
+                v = float(m.replace('.', ''))
+                if _range_brl(v):
+                    precos_brl.append(v)
             except ValueError:
                 pass
 
-    # Estratégia 5: números no formato X.XXX isolados (separador de milhar BRL)
-    # Ex: 6.262 → aparece em data-price ou texto de botões
+    # Estratégia 6: formato X.XXX isolado (milhar BRL) — ex: 6.262
     for m in re.findall(r'\b([4-9]\.\d{3})\b', html):
         try:
             v = float(m.replace('.', ''))
-            if _range_valido(v):
-                precos.append(v)
+            if _range_brl(v):
+                precos_brl.append(v)
         except ValueError:
             pass
 
-    return min(precos) if precos else None
+    # Prefere BRL; se só tiver USD, converte
+    if precos_brl:
+        return min(precos_brl)
+    if precos_usd:
+        cotacao = _get_usd_brl()
+        print(f"  Preços em USD detectados. Convertendo com cotação R$ {cotacao:.2f}/USD.")
+        return min(precos_usd) * cotacao
+    return None
