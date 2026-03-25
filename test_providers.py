@@ -84,8 +84,8 @@ def teste_scraper():
 
 
 def _debug_scraper(origem, destino, data_ida, data_volta):
-    """Mostra trecho do HTML retornado pelo scrape.do para ajudar a ajustar o parser."""
-    import requests
+    """Mostra trechos do HTML retornado pelo scrape.do para ajudar a ajustar o parser."""
+    import requests, re
     token = os.getenv("SCRAPEDO_TOKEN")
     target_url = (
         f"https://www.google.com/travel/flights"
@@ -97,21 +97,29 @@ def _debug_scraper(origem, destino, data_ida, data_volta):
         resp = requests.get(
             "https://api.scrape.do",
             params={"token": token, "url": target_url, "render": "true", "geoCode": "br"},
-            timeout=45,
+            timeout=90,
         )
         html = resp.text
         print(f"\n  Status scrape.do: {resp.status_code} | HTML: {len(html)} chars")
 
-        # Procura por trechos com "BRL" ou "R$" no HTML
-        import re
-        matches = re.findall(r'.{30}(?:R\$|BRL).{30}', html)
-        if matches:
-            print("  Trechos com preço encontrados no HTML:")
-            for m in matches[:5]:
-                print(f"    ...{m.strip()}...")
-        else:
-            print("  Nenhum trecho com 'R$' ou 'BRL' encontrado no HTML.")
-            print(f"  Primeiros 500 chars do HTML:\n  {html[:500]}")
+        padroes = {
+            "R$ explícito":   r'.{20}R\$.{20}',
+            "BRL + número":   r'.{10}BRL.{0,5}\d{4,5}.{10}',
+            '"price":NNNNN':  r'.{5}"(?:price|totalPrice|amount)"\s*:\s*\d{4,5}.{5}',
+            "X.XXX isolado":  r'\b[4-9]\.\d{3}\b',
+        }
+        encontrou = False
+        for nome, pat in padroes.items():
+            matches = re.findall(pat, html)
+            if matches:
+                print(f"\n  [{nome}] — {len(matches)} ocorrências:")
+                for m in matches[:3]:
+                    print(f"    {m.strip()}")
+                encontrou = True
+
+        if not encontrou:
+            print("  Nenhum padrão de preço encontrado.")
+            print(f"  Primeiros 300 chars:\n  {html[:300]}")
     except Exception as e:
         print(f"  Erro ao chamar scrape.do: {e}")
 

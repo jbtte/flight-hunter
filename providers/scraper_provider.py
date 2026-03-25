@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+from bs4 import BeautifulSoup
 
 SCRAPEDO_TOKEN = os.getenv("SCRAPEDO_TOKEN")
 
@@ -30,7 +31,7 @@ def confirmar_preco_scraper(origem, destino, data_ida, data_volta):
                 "render": "true",
                 "geoCode": "br",
             },
-            timeout=45,
+            timeout=90,
         )
         resp.raise_for_status()
         return _extrair_menor_preco(resp.text)
@@ -43,27 +44,57 @@ def confirmar_preco_scraper(origem, destino, data_ida, data_volta):
 def _extrair_menor_preco(html):
     """
     Extrai preços em BRL do HTML renderizado do Google Flights.
-    Filtra valores dentro de um range plausível para voos internacionais.
+    Tenta múltiplas estratégias já que o Google Flights embute dados em JSON/JS.
     """
     precos = []
+    _range_valido = lambda v: 1000 < v < 50000
 
-    # Padrão principal: R$ 4.500 ou R$4500
-    matches = re.findall(r'R\$\s*([\d\.]+(?:,\d{2})?)', html)
-    for m in matches:
+    # Estratégia 1: R$ X.XXX ou R$X.XXX (formato brasileiro explícito)
+    for m in re.findall(r'R\$\s*([\d\.]+(?:,\d{2})?)', html):
         try:
-            valor = float(m.replace('.', '').replace(',', '.'))
-            if 1000 < valor < 50000:
-                precos.append(valor)
+            v = float(m.replace('.', '').replace(',', '.'))
+            if _range_valido(v):
+                precos.append(v)
         except ValueError:
             pass
 
-    # Padrão alternativo: valor numérico próximo a "BRL" no JSON embutido
-    matches_brl = re.findall(r'"BRL[",]\s*"?([\d]+)"?', html)
-    for m in matches_brl:
+    # Estratégia 2: JSON embutido — "BRL","6262" ou ["BRL",6262]
+    for m in re.findall(r'["\[]BRL["\],]\s*["\']?(\d{4,5})["\']?', html):
         try:
-            valor = float(m)
-            if 1000 < valor < 50000:
-                precos.append(valor)
+            v = float(m)
+            if _range_valido(v):
+                precos.append(v)
+        except ValueError:
+            pass
+
+    # Estratégia 3: padrão de preço em JSON — "price":6262 ou "totalPrice":6262
+    for m in re.findall(r'"(?:price|totalPrice|totalFare|amount)"\s*:\s*(\d{4,5})', html):
+        try:
+            v = float(m)
+            if _range_valido(v):
+                precos.append(v)
+        except ValueError:
+            pass
+
+    # Estratégia 4: aria-label com valor monetário nos elementos da página
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup.find_all(attrs={"aria-label": True}):
+        label = tag["aria-label"]
+        for m in re.findall(r'[\d]{1,2}[.,][\d]{3}', label):
+            try:
+                v = float(m.replace('.', '').replace(',', ''))
+                if _range_valido(v):
+                    precos.append(v)
+            except ValueError:
+                pass
+
+    # Estratégia 5: números no formato X.XXX isolados (separador de milhar BRL)
+    # Ex: 6.262 → aparece em data-price ou texto de botões
+    for m in re.findall(r'\b([4-9]\.\d{3})\b', html):
+        try:
+            v = float(m.replace('.', ''))
+            if _range_valido(v):
+                precos.append(v)
         except ValueError:
             pass
 
