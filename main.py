@@ -57,7 +57,8 @@ async def rotina_busca_ativa():
                 label = route["label"]
                 max_price = route["max_price_threshold"]
 
-                baseline = await get_baseline_price(origem, destinos[0])
+                cidade_destino = route.get("city_code", destinos[0])
+                baseline = await get_baseline_price(origem, cidade_destino)
                 if baseline:
                     logging.info(f"Baseline {label}: R$ {baseline:.2f} | meta: R$ {baseline * (1 - threshold):.2f}")
                 else:

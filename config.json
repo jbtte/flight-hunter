@@ -13,6 +13,7 @@
     {
       "origin": "GRU",
       "destinations": ["NRT", "HND"],
+      "city_code": "TYO",
       "label": "Japão (Tóquio)",
       "max_price_threshold": 6500.0,
       "priority": "high"

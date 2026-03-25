@@ -20,7 +20,7 @@ async def teste_travelpayouts_baseline():
     print("\n[1] Testando Travelpayouts — baseline price...")
     from providers.travelpayouts_provider import get_baseline_price
 
-    baseline = await get_baseline_price("GRU", "NRT")
+    baseline = await get_baseline_price("GRU", "TYO")
     if baseline:
         print(f"  ✓ GRU→NRT baseline: R$ {baseline:.2f}")
         return True
