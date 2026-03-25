@@ -1,6 +1,6 @@
 {
   "search_settings": {
-    "check_interval_hours": 6,
+    "check_interval_hours": 12,
     "pearl_threshold": 0.2,
     "travel_window": {
       "start_date": "2026-10-01",
