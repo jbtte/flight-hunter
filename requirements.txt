@@ -1,8 +1,6 @@
 aiohttp
 python-dotenv
 telethon
-playwright
-playwright-stealth
 streamlit
 pandas
 requests
