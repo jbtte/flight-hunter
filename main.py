@@ -1,6 +1,14 @@
 import asyncio
 import logging
+import sys
 from utils.config_loader import CONFIG
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 from providers.travelpayouts_provider import get_baseline_price, get_calendar_prices, links_compra
 from providers.scraper_provider import confirmar_preco_scraper
 from providers.social_miner import start_social_monitor
