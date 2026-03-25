@@ -23,7 +23,7 @@ load_dotenv()
 
 API_ID = int(os.getenv("TELEGRAM_API_ID"))
 API_HASH = os.getenv("TELEGRAM_API_HASH")
-CHANNELS = ["passagensimperdiveis", "melhoresdestinos", "secretflying", "flyous"]
+CHANNELS = ["passagensimperdiveis", "melhoresdestinos"]
 
 
 # ─── Teste 1: Conexão e acesso aos canais ────────────────────────────────────
@@ -94,7 +94,7 @@ async def teste_notificador():
         await send_telegram_msg(
             "🧪 <b>Teste do Flight Hunter Pro</b>\n\n"
             "Social Mining conectado e funcionando.\n"
-            "Canais monitorados: passagensimperdiveis, melhoresdestinos, secretflying, flyous"
+            "Canais monitorados: passagensimperdiveis, melhoresdestinos"
         )
         print("  ✓ Mensagem enviada — verifique seu Telegram.")
         return True
