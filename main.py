@@ -94,8 +94,13 @@ async def rotina_busca_ativa():
                         None, confirmar_preco_scraper, origem, melhor_aeroporto, melhor_data_ida, data_volta
                     )
 
-                    preco_final = preco_confirmado if preco_confirmado else melhor_preco
-                    fonte = "Google Flights" if preco_confirmado else "Travelpayouts (não confirmado)"
+                    # Sanidade: descarta confirmação se divergir mais de 40% do calendar
+                    if preco_confirmado and abs(preco_confirmado - melhor_preco) / melhor_preco < 0.40:
+                        preco_final = preco_confirmado
+                        fonte = "Google Flights"
+                    else:
+                        preco_final = melhor_preco
+                        fonte = "Travelpayouts" + (" (scraper divergiu)" if preco_confirmado else " (não confirmado)")
 
                     if await loop.run_in_executor(None, is_new_pearl, "travelpayouts", label, preco_final):
                         msg = (
