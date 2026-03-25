@@ -64,7 +64,9 @@ AIRLINES = {
     "KE": "Korean Air", "OZ": "Asiana", "TK": "Turkish Airlines",
     "EK": "Emirates", "QR": "Qatar Airways", "SQ": "Singapore Airlines",
     "MH": "Malaysia Airlines", "BR": "EVA Air", "CI": "China Airlines",
-    "CA": "Air China", "MU": "China Eastern",
+    "CA": "Air China", "MU": "China Eastern", "AF": "Air France",
+    "KL": "KLM", "LH": "Lufthansa", "IB": "Iberia", "AY": "Finnair",
+    "DL": "Delta", "BA": "British Airways", "VS": "Virgin Atlantic",
 }
 
 
