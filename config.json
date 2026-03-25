@@ -1,14 +1,18 @@
 {
   "search_settings": {
     "check_interval_hours": 6,
-    "default_duration_days": 12,
-    "days_ahead": 150,
-    "pearl_threshold": 0.2
+    "pearl_threshold": 0.2,
+    "travel_window": {
+      "start_date": "2026-10-01",
+      "end_date": "2026-11-15",
+      "min_duration_days": 14,
+      "max_duration_days": 16
+    }
   },
   "monitored_routes": [
     {
       "origin": "GRU",
-      "destination": "TYO",
+      "destinations": ["NRT", "HND"],
       "label": "Japão (Tóquio)",
       "max_price_threshold": 6500.0,
       "priority": "high"

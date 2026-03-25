@@ -1,12 +1,24 @@
 import asyncio
 import logging
 from utils.config_loader import CONFIG
-from providers.duffel_provider import buscar_passagem_dinamica
-from providers.travelpayouts_provider import get_baseline_price
+from providers.travelpayouts_provider import get_baseline_price, get_calendar_prices
+from providers.scraper_provider import confirmar_preco_scraper
 from providers.social_miner import start_social_monitor
 from utils.database import init_db, is_new_pearl, log_scan
 from utils.notifier import send_telegram_msg
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+
+
+def _meses_no_range(start_date_iso, end_date_iso):
+    """Retorna lista de strings 'YYYY-MM' cobrindo o range de datas."""
+    start = date.fromisoformat(start_date_iso)
+    end = date.fromisoformat(end_date_iso)
+    meses = []
+    atual = date(start.year, start.month, 1)
+    while atual <= end:
+        meses.append(atual.strftime("%Y-%m"))
+        atual = date(atual.year + (atual.month // 12), (atual.month % 12) + 1, 1)
+    return meses
 
 
 def _is_pearl(preco, baseline, threshold, max_price):
@@ -21,54 +33,81 @@ def _is_pearl(preco, baseline, threshold, max_price):
 
 
 async def rotina_busca_ativa():
-    """Percorre as rotas do config.json e busca preços"""
+    """
+    Busca preços via Travelpayouts Calendar (varredura) +
+    scrape.do/Google Flights (confirmação apenas quando pérola detectada).
+    """
     while True:
         try:
             routes = CONFIG.get("monitored_routes", [])
             settings = CONFIG["search_settings"]
-            days_ahead = settings["days_ahead"]
-            duration = settings["default_duration_days"]
             threshold = settings["pearl_threshold"]
-
-            ida = (datetime.now() + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
-            volta = (datetime.now() + timedelta(days=days_ahead + duration)).strftime("%Y-%m-%d")
-
+            travel_window = settings["travel_window"]
             loop = asyncio.get_running_loop()
+            dur_ref = (travel_window["min_duration_days"] + travel_window["max_duration_days"]) // 2
+            meses = _meses_no_range(travel_window["start_date"], travel_window["end_date"])
+            start = date.fromisoformat(travel_window["start_date"])
+            end = date.fromisoformat(travel_window["end_date"])
+
+            logging.info(f"Iniciando ciclo — calendar {meses}, {len(routes)} rota(s).")
 
             for route in routes:
-                origem, destino = route["origin"], route["destination"]
+                origem = route["origin"]
+                destinos = route.get("destinations", [route.get("destination")])
                 label = route["label"]
                 max_price = route["max_price_threshold"]
 
-                # Baseline de preço via Travelpayouts
-                baseline = await get_baseline_price(origem, destino)
+                baseline = await get_baseline_price(origem, destinos[0])
                 if baseline:
                     logging.info(f"Baseline {label}: R$ {baseline:.2f} | meta: R$ {baseline * (1 - threshold):.2f}")
                 else:
-                    logging.warning(f"Baseline indisponível para {label}, usando max_price_threshold como fallback.")
+                    logging.warning(f"Baseline indisponível para {label}, usando max_price_threshold.")
 
-                # 1. Duffel
-                res_duffel = await loop.run_in_executor(
-                    None, buscar_passagem_dinamica, origem, destino, ida, volta
-                )
-                if res_duffel:
-                    is_pearl = _is_pearl(res_duffel["preco"], baseline, threshold, max_price)
-                    notified = False
-                    if is_pearl:
-                        if await loop.run_in_executor(None, is_new_pearl, "duffel", label, res_duffel["preco"]):
-                            await send_telegram_msg(
-                                f"💎 **Duffel [{label}]:** R$ {res_duffel['preco']:.2f}\n"
-                                f"_(baseline: R$ {baseline:.2f})_" if baseline else
-                                f"💎 **Duffel [{label}]:** R$ {res_duffel['preco']:.2f}"
-                            )
-                            notified = True
-                    await loop.run_in_executor(
-                        None, log_scan, "duffel", label, res_duffel["preco"], baseline, is_pearl, notified
+                melhor_preco = None
+                melhor_data_ida = None
+                melhor_aeroporto = None
+
+                # Varredura via calendar — 2 chamadas por aeroporto cobre todo o período
+                for destino in destinos:
+                    precos = await get_calendar_prices(origem, destino, meses)
+                    for date_str, preco in precos.items():
+                        data_ida = date.fromisoformat(date_str)
+                        if not (start <= data_ida <= end):
+                            continue
+                        logging.info(f"  {origem}→{destino} {date_str}: R$ {preco:.2f}")
+                        await loop.run_in_executor(
+                            None, log_scan, "travelpayouts", label, preco, baseline,
+                            _is_pearl(preco, baseline, threshold, max_price), False
+                        )
+                        if melhor_preco is None or preco < melhor_preco:
+                            melhor_preco = preco
+                            melhor_data_ida = date_str
+                            melhor_aeroporto = destino
+
+                # Confirmação via scraper apenas se calendar apontou pérola
+                if melhor_preco and _is_pearl(melhor_preco, baseline, threshold, max_price):
+                    data_volta = (date.fromisoformat(melhor_data_ida) + timedelta(days=dur_ref)).isoformat()
+                    logging.info(f"Pérola no calendar! Confirmando via scraper: {melhor_aeroporto} {melhor_data_ida}→{data_volta}")
+
+                    preco_confirmado = await loop.run_in_executor(
+                        None, confirmar_preco_scraper, origem, melhor_aeroporto, melhor_data_ida, data_volta
                     )
-                else:
-                    await loop.run_in_executor(
-                        None, log_scan, "duffel", label, None, baseline, False, False
-                    )
+
+                    preco_final = preco_confirmado if preco_confirmado else melhor_preco
+                    fonte = "Google Flights" if preco_confirmado else "Travelpayouts (não confirmado)"
+
+                    if await loop.run_in_executor(None, is_new_pearl, "travelpayouts", label, preco_final):
+                        msg = (
+                            f"💎 **[{label}]:** R$ {preco_final:.2f}\n"
+                            f"Aeroporto: {melhor_aeroporto} | Ida: {melhor_data_ida} | ~{dur_ref} dias\n"
+                            f"Fonte: {fonte}\n"
+                        )
+                        if baseline:
+                            msg += f"_(baseline: R$ {baseline:.2f})_"
+                        await send_telegram_msg(msg)
+                        await loop.run_in_executor(
+                            None, log_scan, "travelpayouts", label, preco_final, baseline, True, True
+                        )
 
 
         except Exception as e:

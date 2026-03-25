@@ -1,5 +1,4 @@
 aiohttp
-duffel-api
 python-dotenv
 telethon
 playwright
@@ -7,3 +6,4 @@ playwright-stealth
 streamlit
 pandas
 requests
+beautifulsoup4
