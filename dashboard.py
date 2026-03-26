@@ -118,21 +118,24 @@ st.subheader("Últimos scans")
 
 df_scans = query(
     """
-    SELECT timestamp, provider, route, price_found, baseline, was_pearl, was_notified
+    SELECT timestamp, route, airport, airline, departure_date,
+           price_found, baseline, was_pearl, was_notified
     FROM scans ORDER BY timestamp DESC LIMIT 50
     """
 )
 if not df_scans.empty:
     df_scans["was_pearl"] = df_scans["was_pearl"].map({1: "💎", 0: ""})
-    df_scans["was_notified"] = df_scans["was_notified"].map({1: "Sim", 0: "Não"})
+    df_scans["was_notified"] = df_scans["was_notified"].map({1: "✅", 0: ""})
     df_scans = df_scans.rename(columns={
-        "timestamp": "Data",
-        "provider": "Provider",
+        "timestamp": "Scan",
         "route": "Rota",
+        "airport": "Aeroporto",
+        "airline": "Cia Aérea",
+        "departure_date": "Data Ida",
         "price_found": "Preço (R$)",
         "baseline": "Baseline (R$)",
-        "was_pearl": "Pérola",
-        "was_notified": "Notificado",
+        "was_pearl": "💎",
+        "was_notified": "Notif.",
     })
     st.dataframe(df_scans, use_container_width=True, hide_index=True)
 else:

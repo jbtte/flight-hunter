@@ -88,7 +88,8 @@ async def rotina_busca_ativa():
                         logging.info(f"  {origem}→{destino} {date_str}: R$ {preco:.2f} ({info['airline']})")
                         await loop.run_in_executor(
                             None, log_scan, "travelpayouts", label, preco, baseline,
-                            _is_pearl(preco, baseline, threshold, max_price), False
+                            _is_pearl(preco, baseline, threshold, max_price), False,
+                            destino, info["airline"], date_str
                         )
                         if melhor_preco is None or preco < melhor_preco:
                             melhor_preco = preco
@@ -142,7 +143,8 @@ async def rotina_busca_ativa():
                         msg += f"\n\n🛒 <a href='{url_decolar}'>Decolar</a>  🔍 <a href='{url_google}'>Google Flights</a>"
                         await send_telegram_msg(msg)
                         await loop.run_in_executor(
-                            None, log_scan, "travelpayouts", label, preco_final, baseline, True, True
+                            None, log_scan, "travelpayouts", label, preco_final, baseline, True, True,
+                            melhor_aeroporto, melhor_info["airline"] if melhor_info else None, melhor_data_ida
                         )
 
 

@@ -28,6 +28,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             provider TEXT,
             route TEXT,
+            airport TEXT,
+            airline TEXT,
+            departure_date TEXT,
             price_found REAL,
             baseline REAL,
             was_pearl INTEGER DEFAULT 0,
@@ -36,6 +39,12 @@ def init_db():
         )
     """
     )
+    # Migração: adiciona colunas em DBs existentes sem as novas colunas
+    for col, tipo in [("airport", "TEXT"), ("airline", "TEXT"), ("departure_date", "TEXT")]:
+        try:
+            cursor.execute(f"ALTER TABLE scans ADD COLUMN {col} {tipo}")
+        except Exception:
+            pass
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS social_hits (
@@ -52,16 +61,19 @@ def init_db():
     conn.close()
 
 
-def log_scan(provider, route, price_found, baseline, was_pearl, was_notified):
+def log_scan(provider, route, price_found, baseline, was_pearl, was_notified,
+             airport=None, airline=None, departure_date=None):
     """Registra cada execução de scan, independente de ser pérola."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
-        INSERT INTO scans (provider, route, price_found, baseline, was_pearl, was_notified, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO scans (provider, route, airport, airline, departure_date,
+                           price_found, baseline, was_pearl, was_notified, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
-        (provider, route, price_found, baseline, int(was_pearl), int(was_notified), datetime.now()),
+        (provider, route, airport, airline, departure_date,
+         price_found, baseline, int(was_pearl), int(was_notified), datetime.now()),
     )
     conn.commit()
     conn.close()
